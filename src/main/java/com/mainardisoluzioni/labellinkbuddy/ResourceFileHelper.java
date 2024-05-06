@@ -16,20 +16,23 @@
  */
 package com.mainardisoluzioni.labellinkbuddy;
 
+import java.io.InputStream;
+
 /**
  *
  * @author adminavvimpa
  */
-public class Main {
-    public static void main(String[] args) {
-        final String nomeEtichettatrice;
-        if (args.length > 0)
-            nomeEtichettatrice = args[0];
-        else
-            nomeEtichettatrice = "TOSHIBA-001";
+public class ResourceFileHelper {
 
-        LabelLinkBuddy instance = new LabelLinkBuddy(nomeEtichettatrice);
-        instance.provaAVedereSeFunziona();
-        //instance.ascoltaSullaSerialeEStampaEtichetta();
+    public ResourceFileHelper() {
+    }
+    
+    public InputStream getFileAsIOStream(final String fileName) {
+        InputStream ioStream = this.getClass().getClassLoader().getResourceAsStream(fileName);
+
+        if (ioStream == null) {
+            throw new IllegalArgumentException(fileName + " is not found");
+        }
+        return ioStream;
     }
 }
