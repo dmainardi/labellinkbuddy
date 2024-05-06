@@ -36,9 +36,9 @@ public class Main {
         /*LabelLinkBuddy instance = new LabelLinkBuddy(nomeEtichettatrice);
         instance.stampaEtichettaEControllaCodiceABarre();*/
         
-        PyPanda instance = new PyPanda();
+        PyPanda instance = new PyPanda(nomeEtichettatrice);
         try {
-            instance.createClient();
+            instance.createClientAndWaitForPrint();
         } catch (UaException | InterruptedException | ExecutionException ex) {
             Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
         }

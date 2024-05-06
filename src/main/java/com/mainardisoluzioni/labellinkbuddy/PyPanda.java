@@ -49,11 +49,14 @@ public class PyPanda {
     public static final int TCP_PORT = 4840;
     
     private OpcUaClient client;
+    
+    private final LabelLinkBuddy instance;
 
-    public PyPanda() {
+    public PyPanda(String nomeEtichettatrice) {
+        instance = new LabelLinkBuddy(nomeEtichettatrice);
     }
     
-    public void createClient() throws UaException, InterruptedException, ExecutionException {
+    public void createClientAndWaitForPrint() throws UaException, InterruptedException, ExecutionException {
         List<EndpointDescription> endpoints = DiscoveryClient.getEndpoints("opc.tcp://" + IP_ADDRESS +":" + String.valueOf(TCP_PORT)).get();
         EndpointDescription configPoint = EndpointUtil.updateUrl(endpoints.get(0), IP_ADDRESS, TCP_PORT);
 
@@ -66,42 +69,43 @@ public class PyPanda {
         client = OpcUaClient.create(cfg.build());
         
         client.connect().get();
-        try {
-            for (int i = 3; i < 7; i++) {
-                System.out.println("4, " + i +": " + client.getAddressSpace().getVariableNode(new NodeId(4, i)).getValue().getValue().getValue());
+        /*for (int i = 3; i < 7; i++) {
+            System.out.println("4, " + i +": " + client.getAddressSpace().getVariableNode(new NodeId(4, i)).getValue().getValue().getValue());
+        }*/
+
+        // what to read
+        ReadValueId readValueId = new ReadValueId(new NodeId(4, 6), AttributeId.Value.uid(), null, null);
+
+        // monitoring parameters
+        int clientHandle = 123456789;
+        MonitoringParameters parameters = new MonitoringParameters(uint(clientHandle), 1000.0, null, uint(10), true);
+
+        // creation request
+        MonitoredItemCreateRequest request = new MonitoredItemCreateRequest(readValueId, MonitoringMode.Reporting, parameters);
+
+        // The actual consumer
+        //Consumer<DataValue> consumerMaina = (t) -> System.out.println("Valore: " + t);
+        Consumer<DataValue> consumerMaina = (t) -> {
+            Boolean stampare = (Boolean) t.getValue().getValue();
+            System.out.println("Valore: " + stampare);
+            if (stampare) {
+                instance.stampaEtichettaEControllaCodiceABarre();
             }
-            
-            // what to read
-            ReadValueId readValueId = new ReadValueId(new NodeId(4, 6), AttributeId.Value.uid(), null, null);
+        };
 
-            // monitoring parameters
-            int clientHandle = 123456789;
-            MonitoringParameters parameters = new MonitoringParameters(uint(clientHandle), 1000.0, null, uint(10), true);
+        // setting the consumer after the subscription creation
+        UaSubscription.ItemCreationCallback maina = (monitoredItem, id) -> monitoredItem.setValueConsumer(consumerMaina);
 
-            // creation request
-            MonitoredItemCreateRequest request = new MonitoredItemCreateRequest(readValueId, MonitoringMode.Reporting, parameters);
-            
-            // The actual consumer
-            //Consumer<DataValue> consumerMaina = (t) -> System.out.println("Valore: " + t);
-            Consumer<DataValue> consumerMaina = (t) -> System.out.println("Valore: " + t.getValue().getValue());
+        // creating the subscription
+        UaSubscription subscription = client.getSubscriptionManager().createSubscription(1000.0).get();
 
-            // setting the consumer after the subscription creation
-            UaSubscription.ItemCreationCallback maina = (monitoredItem, id) -> monitoredItem.setValueConsumer(consumerMaina);
+        List<UaMonitoredItem> items = subscription.createMonitoredItems(
+            TimestampsToReturn.Both,
+            Arrays.asList(request),
+            maina)
+          .get();
 
-            // creating the subscription
-            UaSubscription subscription = client.getSubscriptionManager().createSubscription(1000.0).get();
-
-            List<UaMonitoredItem> items = subscription.createMonitoredItems(
-                TimestampsToReturn.Both,
-                Arrays.asList(request),
-                maina)
-              .get();
-
-            Thread.sleep(60000);
-        } catch (UaException e) {
-            disconnect();
-            throw e;
-        }
+        Thread.sleep(120000);
         
         disconnect();
     }
