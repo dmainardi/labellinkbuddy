@@ -16,6 +16,11 @@
  */
 package com.mainardisoluzioni.labellinkbuddy;
 
+import java.util.concurrent.ExecutionException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import org.eclipse.milo.opcua.stack.core.UaException;
+
 /**
  *
  * @author adminavvimpa
@@ -28,8 +33,14 @@ public class Main {
         else
             nomeEtichettatrice = "TOSHIBA-001";
 
-        LabelLinkBuddy instance = new LabelLinkBuddy(nomeEtichettatrice);
-        instance.provaAVedereSeFunziona();
-        //instance.ascoltaSullaSerialeEStampaEtichetta();
+        /*LabelLinkBuddy instance = new LabelLinkBuddy(nomeEtichettatrice);
+        instance.stampaEtichettaEControllaCodiceABarre();*/
+        
+        PyPanda instance = new PyPanda();
+        try {
+            instance.createClient();
+        } catch (UaException | InterruptedException | ExecutionException ex) {
+            Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }
 }

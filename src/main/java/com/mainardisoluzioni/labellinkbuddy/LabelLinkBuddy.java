@@ -16,7 +16,11 @@
  */
 package com.mainardisoluzioni.labellinkbuddy;
 
+import com.fazecast.jSerialComm.SerialPort;
+import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -28,7 +32,6 @@ import javax.print.attribute.HashPrintRequestAttributeSet;
 import javax.print.attribute.HashPrintServiceAttributeSet;
 import javax.print.attribute.PrintRequestAttributeSet;
 import javax.print.attribute.PrintServiceAttributeSet;
-import javax.print.attribute.standard.Copies;
 import javax.print.attribute.standard.PrinterName;
 import net.sf.jasperreports.engine.JRException;
 import net.sf.jasperreports.engine.JasperFillManager;
@@ -37,7 +40,6 @@ import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 import net.sf.jasperreports.engine.export.JRPrintServiceExporter;
 import net.sf.jasperreports.export.SimpleExporterInput;
 import net.sf.jasperreports.export.SimplePrintServiceExporterConfiguration;
-
 /**
  *
  * @author adminavvimpa
@@ -49,8 +51,35 @@ public class LabelLinkBuddy {
         this.nomeEtichettatrice = nomeEtichettatrice;
     }
     
-    public void provaAVedereSeFunziona() {
-        stampaSuEtichettatrice(nomeEtichettatrice, "aaahhhh");
+    public void stampaEtichettaEControllaCodiceABarre() {
+        SerialPort comPortBar = null;
+        for (SerialPort commPortTemp : SerialPort.getCommPorts()) {
+            String portName = commPortTemp.getDescriptivePortName().toLowerCase();
+            if (portName.contains("barcode")) {
+                comPortBar = commPortTemp;
+            }
+        }
+        
+        if (comPortBar != null) {
+            comPortBar.disableExclusiveLock();
+            comPortBar.openPort();
+            comPortBar.setComPortTimeouts(SerialPort.TIMEOUT_READ_SEMI_BLOCKING, 0, 0);
+            try (InputStream inBar = comPortBar.getInputStream()) {
+                BufferedReader readerBar = new BufferedReader(new InputStreamReader(inBar));
+                String lineBar;
+                String identificativo = "Stella";
+                stampaSuEtichettatrice(nomeEtichettatrice, identificativo);
+                if ((lineBar = readerBar.readLine()) != null) {
+                    if (lineBar.equals(identificativo))
+                        System.out.println("TUTTO OK");
+                    else
+                        System.out.println("Nooooo "+ lineBar);
+                }
+            } catch (IOException ex) {
+                Logger.getLogger(LabelLinkBuddy.class.getName()).log(Level.SEVERE, null, ex);
+            }
+            comPortBar.closePort();
+        }
     }
     
     private void stampaSuEtichettatrice(String nomeEtichettatrice, String identificativo) {
