@@ -56,10 +56,8 @@ public class HeartbeatPlc {
                 .setRequestTimeout(uint(5000));
 
         client = OpcUaClient.create(cfg.build());
-        //System.out.println("client creato");
         
         client.connect().get();
-        //System.out.println("client connesso");
         
         List<WriteValue> writeValues = new ArrayList<>();
         writeValues.add(
@@ -71,10 +69,8 @@ public class HeartbeatPlc {
                 )
         );
         client.write(writeValues).get();
-        //System.out.println("heartbeat inviato");
         
         if (client != null)
             client.disconnect().get();
-        //System.out.println("client disconnesso");
     }
 }

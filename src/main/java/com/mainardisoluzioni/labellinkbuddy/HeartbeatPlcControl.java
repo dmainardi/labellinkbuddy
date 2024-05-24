@@ -40,13 +40,12 @@ public class HeartbeatPlcControl {
 
     public void doHeartbeat() {
         HeartbeatPlc heartbeat = new HeartbeatPlc();
-        Runnable task = () -> System.out.println(".");
+        //Runnable task = () -> System.out.println(".");
         Runnable task2 = () -> {
             try {
                 heartbeat.sendHeartbeat();
             } catch (InterruptedException | ExecutionException | UaException ex) {
                 Logger.getLogger(HeartbeatPlcControl.class.getName()).log(Level.SEVERE, null, ex);
-                System.out.println("AAHHHHHH");
             }
         };
         beeperHandle = scheduler.scheduleAtFixedRate(task2, 5, 7, SECONDS);

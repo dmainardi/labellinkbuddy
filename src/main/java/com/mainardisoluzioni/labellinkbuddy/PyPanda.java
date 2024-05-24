@@ -134,7 +134,8 @@ public class PyPanda {
         
         heartbeatPlcControl = new HeartbeatPlcControl();
         heartbeatPlcControl.doHeartbeat();
-        Thread.sleep(30000);
+        Thread.sleep(240000);
+        //Thread.currentThread().join();
         heartbeatPlcControl.cancelHeartbeat();
         
         disconnect();
