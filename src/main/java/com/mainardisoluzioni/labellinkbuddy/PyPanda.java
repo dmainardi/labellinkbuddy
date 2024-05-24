@@ -33,7 +33,6 @@ import org.eclipse.milo.opcua.stack.core.UaException;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DataValue;
 import org.eclipse.milo.opcua.stack.core.types.builtin.LocalizedText;
 import org.eclipse.milo.opcua.stack.core.types.builtin.NodeId;
-import org.eclipse.milo.opcua.stack.core.types.builtin.StatusCode;
 import org.eclipse.milo.opcua.stack.core.types.builtin.Variant;
 import static org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.Unsigned.uint;
 import org.eclipse.milo.opcua.stack.core.types.enumerated.MonitoringMode;
@@ -54,7 +53,7 @@ public class PyPanda {
     public static final String IP_ADDRESS = "192.168.5.1";
     public static final int TCP_PORT = 4840;
     
-    private static final int NAMESPACE_INDEX = 4;
+    public static final int NAMESPACE_INDEX = 4;
     private static final int PROCESS_ENDED_NODE_IDENTIFIER = 6;
     private static final int WRITE_NODE_IDENTIFIER = 7;
     private static final int IDENTIFICATIVO_NODE_IDENTIFIER = 8;
@@ -62,6 +61,8 @@ public class PyPanda {
     private OpcUaClient client;
     
     private final LabelLinkBuddy instance;
+    
+    private HeartbeatPlcControl heartbeatPlcControl;
 
     public PyPanda(String nomeEtichettatrice) {
         instance = new LabelLinkBuddy(nomeEtichettatrice);
@@ -130,8 +131,11 @@ public class PyPanda {
             Arrays.asList(request),
             callbackStampaEtichettaEControllaCodiceABarre)
           .get();
-
-        Thread.sleep(60000);
+        
+        heartbeatPlcControl = new HeartbeatPlcControl();
+        heartbeatPlcControl.doHeartbeat();
+        Thread.sleep(30000);
+        heartbeatPlcControl.cancelHeartbeat();
         
         disconnect();
     }
@@ -147,13 +151,6 @@ public class PyPanda {
                 )
         );
         return client.write(writeValues).get();
-        
-        /*CompletableFuture<StatusCode> f = client.writeValue(
-                new NodeId(NAMESPACE_INDEX, WRITE_NODE_IDENTIFIER),
-                new DataValue(new Variant(esito.getValue()), null, null, null)
-        );
-        
-        return f.get();*/
     }
     
     private void disconnect() throws InterruptedException, ExecutionException {
