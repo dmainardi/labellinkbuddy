@@ -51,7 +51,7 @@ public class LabelLinkBuddy {
         this.nomeEtichettatrice = nomeEtichettatrice;
     }
     
-    public void stampaEtichettaEControllaCodiceABarre() {
+    public EsitoControlloCodiceABarre stampaEtichettaEControllaCodiceABarre() {
         SerialPort comPortBar = null;
         for (SerialPort commPortTemp : SerialPort.getCommPorts()) {
             String portName = commPortTemp.getDescriptivePortName().toLowerCase();
@@ -61,6 +61,7 @@ public class LabelLinkBuddy {
         }
         
         if (comPortBar != null) {
+            EsitoControlloCodiceABarre esito;
             comPortBar.disableExclusiveLock();
             comPortBar.openPort();
             comPortBar.setComPortTimeouts(SerialPort.TIMEOUT_READ_SEMI_BLOCKING, 0, 0);
@@ -68,50 +69,63 @@ public class LabelLinkBuddy {
                 BufferedReader readerBar = new BufferedReader(new InputStreamReader(inBar));
                 String lineBar;
                 String identificativo = "Stella";
+                if (readerBar.ready())
+                    readerBar.readLine();   //  utile per 'svuotare' eventuali codici a barre letti prima della stampa dell'etichetta
                 stampaSuEtichettatrice(nomeEtichettatrice, identificativo);
                 if ((lineBar = readerBar.readLine()) != null) {
-                    if (lineBar.equals(identificativo))
+                    if (lineBar.equals(identificativo)) {
                         System.out.println("TUTTO OK");
-                    else
+                        esito = EsitoControlloCodiceABarre.ESITO_POSITIVO;
+                    }
+                    else {
                         System.out.println("Nooooo "+ lineBar);
+                        esito = EsitoControlloCodiceABarre.ESITO_NEGATIVO;
+                    }
                 }
+                else
+                    esito = EsitoControlloCodiceABarre.ERRORE_BARCODE_VUOTO;
             } catch (IOException ex) {
                 Logger.getLogger(LabelLinkBuddy.class.getName()).log(Level.SEVERE, null, ex);
+                esito = EsitoControlloCodiceABarre.ERRORE_BARCODE;
+            } catch (JRException ex) {
+                Logger.getLogger(LabelLinkBuddy.class.getName()).log(Level.SEVERE, null, ex);
+                esito = EsitoControlloCodiceABarre.ERRORE_CREAZIONE_ETICHETTA;
+            } catch (EtichettatriceNonTrovataException ex) {
+                Logger.getLogger(LabelLinkBuddy.class.getName()).log(Level.SEVERE, null, ex);
+                esito = EsitoControlloCodiceABarre.ERRORE_STAMPANTE_NON_TROVATA;
             }
             comPortBar.closePort();
+            return esito;
         }
+        return EsitoControlloCodiceABarre.ERRORE_BARCODE_NON_COLLEGATO;
     }
     
-    private void stampaSuEtichettatrice(String nomeEtichettatrice, String identificativo) {
+    private void stampaSuEtichettatrice(String nomeEtichettatrice, String identificativo) throws JRException, EtichettatriceNonTrovataException {
         if (nomeEtichettatrice != null && !nomeEtichettatrice.isBlank()) {
             PrintService printService = PrintUtility.findPrintService(nomeEtichettatrice);
             if (printService != null) {
-                try {
-                    JasperPrint jasperPrint = creaReport(identificativo);
+                JasperPrint jasperPrint = creaReport(identificativo);
 
-                    PrintRequestAttributeSet printRequestAttributeSet = new HashPrintRequestAttributeSet();
+                PrintRequestAttributeSet printRequestAttributeSet = new HashPrintRequestAttributeSet();
 
-                    PrintServiceAttributeSet printServiceAttributeSet = new HashPrintServiceAttributeSet();
-                    printServiceAttributeSet.add(printService.getAttribute(PrinterName.class));
+                PrintServiceAttributeSet printServiceAttributeSet = new HashPrintServiceAttributeSet();
+                printServiceAttributeSet.add(printService.getAttribute(PrinterName.class));
 
-                    JRPrintServiceExporter exporter = new JRPrintServiceExporter();
-                    exporter.setExporterInput(new SimpleExporterInput(jasperPrint));
-                    SimplePrintServiceExporterConfiguration configuration = new SimplePrintServiceExporterConfiguration();
+                JRPrintServiceExporter exporter = new JRPrintServiceExporter();
+                exporter.setExporterInput(new SimpleExporterInput(jasperPrint));
+                SimplePrintServiceExporterConfiguration configuration = new SimplePrintServiceExporterConfiguration();
 
-                    configuration.setPrintServiceAttributeSet(printServiceAttributeSet);
-                    configuration.setPrintRequestAttributeSet(printRequestAttributeSet);
-                    configuration.setDisplayPageDialog(false);
-                    configuration.setDisplayPrintDialog(false);
-                    exporter.setConfiguration(configuration);
-                    exporter.exportReport();
+                configuration.setPrintServiceAttributeSet(printServiceAttributeSet);
+                configuration.setPrintRequestAttributeSet(printRequestAttributeSet);
+                configuration.setDisplayPageDialog(false);
+                configuration.setDisplayPrintDialog(false);
+                exporter.setConfiguration(configuration);
+                exporter.exportReport();
 
-                    //JasperExportManager.exportReportToPdfFile(jasperPrint, "maina.pdf");
-                } catch (JRException ex) {
-                    Logger.getLogger(LabelLinkBuddy.class.getName()).log(Level.SEVERE, null, ex);
-                }
-            } else {
-                Logger.getLogger(LabelLinkBuddy.class.getName()).log(Level.SEVERE, null, "vendita.etichetta.stampa.errore.etichettatriceMancante");
+                //JasperExportManager.exportReportToPdfFile(jasperPrint, "maina.pdf");
             }
+            else
+                throw new EtichettatriceNonTrovataException();
         }
     }
 

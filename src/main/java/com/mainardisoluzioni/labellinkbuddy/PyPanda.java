@@ -16,11 +16,13 @@
  */
 package com.mainardisoluzioni.labellinkbuddy;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.eclipse.milo.opcua.sdk.client.OpcUaClient;
 import org.eclipse.milo.opcua.sdk.client.api.config.OpcUaClientConfigBuilder;
 import org.eclipse.milo.opcua.sdk.client.api.subscriptions.UaMonitoredItem;
@@ -31,6 +33,8 @@ import org.eclipse.milo.opcua.stack.core.UaException;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DataValue;
 import org.eclipse.milo.opcua.stack.core.types.builtin.LocalizedText;
 import org.eclipse.milo.opcua.stack.core.types.builtin.NodeId;
+import org.eclipse.milo.opcua.stack.core.types.builtin.StatusCode;
+import org.eclipse.milo.opcua.stack.core.types.builtin.Variant;
 import static org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.Unsigned.uint;
 import org.eclipse.milo.opcua.stack.core.types.enumerated.MonitoringMode;
 import org.eclipse.milo.opcua.stack.core.types.enumerated.TimestampsToReturn;
@@ -38,6 +42,8 @@ import org.eclipse.milo.opcua.stack.core.types.structured.EndpointDescription;
 import org.eclipse.milo.opcua.stack.core.types.structured.MonitoredItemCreateRequest;
 import org.eclipse.milo.opcua.stack.core.types.structured.MonitoringParameters;
 import org.eclipse.milo.opcua.stack.core.types.structured.ReadValueId;
+import org.eclipse.milo.opcua.stack.core.types.structured.WriteResponse;
+import org.eclipse.milo.opcua.stack.core.types.structured.WriteValue;
 import org.eclipse.milo.opcua.stack.core.util.EndpointUtil;
 
 /**
@@ -47,6 +53,10 @@ import org.eclipse.milo.opcua.stack.core.util.EndpointUtil;
 public class PyPanda {
     public static final String IP_ADDRESS = "192.168.5.1";
     public static final int TCP_PORT = 4840;
+    
+    private static final int NAMESPACE_INDEX = 4;
+    private static final int READ_NODE_IDENTIFIER = 6;
+    private static final int WRITE_NODE_IDENTIFIER = 7;
     
     private OpcUaClient client;
     
@@ -74,7 +84,7 @@ public class PyPanda {
         }*/
 
         // what to read
-        ReadValueId readValueId = new ReadValueId(new NodeId(4, 6), AttributeId.Value.uid(), null, null);
+        ReadValueId readValueId = new ReadValueId(new NodeId(NAMESPACE_INDEX, READ_NODE_IDENTIFIER), AttributeId.Value.uid(), null, null);
 
         // monitoring parameters
         int clientHandle = 123456789;
@@ -85,16 +95,24 @@ public class PyPanda {
 
         // The actual consumer
         //Consumer<DataValue> consumerMaina = (t) -> System.out.println("Valore: " + t);
-        Consumer<DataValue> consumerMaina = (t) -> {
-            Boolean stampare = (Boolean) t.getValue().getValue();
-            System.out.println("Valore: " + stampare);
-            if (stampare) {
-                instance.stampaEtichettaEControllaCodiceABarre();
+        Consumer<DataValue> consumerStampaEtichettaEControllaCodiceABarre = new Consumer<DataValue>() {
+            @Override
+            public void accept(DataValue t) {
+                Boolean stampare = (Boolean) t.getValue().getValue();
+                System.out.println("Processo terminato: " + stampare);
+                if (stampare) {
+                    try {
+                        WriteResponse esitoScritturaSuPlc = inviaEsitoAlPlc(instance.stampaEtichettaEControllaCodiceABarre());
+                        System.out.println("Esito scrittura su PLC: " + esitoScritturaSuPlc.getResponseHeader().getServiceResult().isGood());
+                    } catch (InterruptedException | ExecutionException ex) {
+                        Logger.getLogger(PyPanda.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                }
             }
         };
 
         // setting the consumer after the subscription creation
-        UaSubscription.ItemCreationCallback maina = (monitoredItem, id) -> monitoredItem.setValueConsumer(consumerMaina);
+        UaSubscription.ItemCreationCallback callbackStampaEtichettaEControllaCodiceABarre = (monitoredItem, id) -> monitoredItem.setValueConsumer(consumerStampaEtichettaEControllaCodiceABarre);
 
         // creating the subscription
         UaSubscription subscription = client.getSubscriptionManager().createSubscription(1000.0).get();
@@ -102,12 +120,32 @@ public class PyPanda {
         List<UaMonitoredItem> items = subscription.createMonitoredItems(
             TimestampsToReturn.Both,
             Arrays.asList(request),
-            maina)
+            callbackStampaEtichettaEControllaCodiceABarre)
           .get();
 
-        Thread.sleep(120000);
+        Thread.sleep(60000);
         
         disconnect();
+    }
+    
+    private WriteResponse inviaEsitoAlPlc(EsitoControlloCodiceABarre esito) throws InterruptedException, ExecutionException {
+        List<WriteValue> writeValues = new ArrayList<>();
+        writeValues.add(
+        new WriteValue(
+        new NodeId(NAMESPACE_INDEX, WRITE_NODE_IDENTIFIER),
+        AttributeId.Value.uid(),
+        null, // indexRange
+        DataValue.valueOnly(new Variant(esito.getValue()))
+        )
+        );
+        return client.write(writeValues).get();
+        
+        /*CompletableFuture<StatusCode> f = client.writeValue(
+                new NodeId(NAMESPACE_INDEX, WRITE_NODE_IDENTIFIER),
+                new DataValue(new Variant(esito.getValue()), null, null, null)
+        );
+        
+        return f.get();*/
     }
     
     private void disconnect() throws InterruptedException, ExecutionException {
