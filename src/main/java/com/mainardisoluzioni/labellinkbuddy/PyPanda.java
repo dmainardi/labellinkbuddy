@@ -55,8 +55,9 @@ public class PyPanda {
     public static final int TCP_PORT = 4840;
     
     private static final int NAMESPACE_INDEX = 4;
-    private static final int READ_NODE_IDENTIFIER = 6;
+    private static final int PROCESS_ENDED_NODE_IDENTIFIER = 6;
     private static final int WRITE_NODE_IDENTIFIER = 7;
+    private static final int IDENTIFICATIVO_NODE_IDENTIFIER = 8;
     
     private OpcUaClient client;
     
@@ -84,7 +85,7 @@ public class PyPanda {
         }*/
 
         // what to read
-        ReadValueId readValueId = new ReadValueId(new NodeId(NAMESPACE_INDEX, READ_NODE_IDENTIFIER), AttributeId.Value.uid(), null, null);
+        ReadValueId readValueId = new ReadValueId(new NodeId(NAMESPACE_INDEX, PROCESS_ENDED_NODE_IDENTIFIER), AttributeId.Value.uid(), null, null);
 
         // monitoring parameters
         int clientHandle = 123456789;
@@ -102,7 +103,14 @@ public class PyPanda {
                 System.out.println("Processo terminato: " + stampare);
                 if (stampare) {
                     try {
-                        WriteResponse esitoScritturaSuPlc = inviaEsitoAlPlc(instance.stampaEtichettaEControllaCodiceABarre());
+                        EsitoControlloCodiceABarre esito;
+                        try {
+                            String identificativo = String.valueOf(client.getAddressSpace().getVariableNode(new NodeId(NAMESPACE_INDEX, IDENTIFICATIVO_NODE_IDENTIFIER)).readValue().getValue().getValue());
+                            esito = instance.stampaEtichettaEControllaCodiceABarre(identificativo);
+                        } catch (UaException ex) {
+                            esito = EsitoControlloCodiceABarre.ERRORE_IDENTIFICATIVO_VUOTO;
+                        }
+                        WriteResponse esitoScritturaSuPlc = inviaEsitoAlPlc(esito);
                         System.out.println("Esito scrittura su PLC: " + esitoScritturaSuPlc.getResponseHeader().getServiceResult().isGood());
                     } catch (InterruptedException | ExecutionException ex) {
                         Logger.getLogger(PyPanda.class.getName()).log(Level.SEVERE, null, ex);
@@ -131,12 +139,12 @@ public class PyPanda {
     private WriteResponse inviaEsitoAlPlc(EsitoControlloCodiceABarre esito) throws InterruptedException, ExecutionException {
         List<WriteValue> writeValues = new ArrayList<>();
         writeValues.add(
-        new WriteValue(
-        new NodeId(NAMESPACE_INDEX, WRITE_NODE_IDENTIFIER),
-        AttributeId.Value.uid(),
-        null, // indexRange
-        DataValue.valueOnly(new Variant(esito.getValue()))
-        )
+                new WriteValue(
+                        new NodeId(NAMESPACE_INDEX, WRITE_NODE_IDENTIFIER),
+                        AttributeId.Value.uid(),
+                        null, // indexRange
+                        DataValue.valueOnly(new Variant(esito.getValue()))
+                )
         );
         return client.write(writeValues).get();
         

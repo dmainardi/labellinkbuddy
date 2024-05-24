@@ -28,7 +28,8 @@ public enum EsitoControlloCodiceABarre {
     ERRORE_BARCODE((short)4),
     ERRORE_BARCODE_NON_COLLEGATO((short)5),
     ERRORE_CREAZIONE_ETICHETTA((short)6),
-    ERRORE_BARCODE_VUOTO((short)7);
+    ERRORE_BARCODE_VUOTO((short)7),
+    ERRORE_IDENTIFICATIVO_VUOTO((short)8);
     
     private final short value;
     

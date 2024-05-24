@@ -51,53 +51,55 @@ public class LabelLinkBuddy {
         this.nomeEtichettatrice = nomeEtichettatrice;
     }
     
-    public EsitoControlloCodiceABarre stampaEtichettaEControllaCodiceABarre() {
-        SerialPort comPortBar = null;
-        for (SerialPort commPortTemp : SerialPort.getCommPorts()) {
-            String portName = commPortTemp.getDescriptivePortName().toLowerCase();
-            if (portName.contains("barcode")) {
-                comPortBar = commPortTemp;
-            }
-        }
-        
-        if (comPortBar != null) {
-            EsitoControlloCodiceABarre esito;
-            comPortBar.disableExclusiveLock();
-            comPortBar.openPort();
-            comPortBar.setComPortTimeouts(SerialPort.TIMEOUT_READ_SEMI_BLOCKING, 0, 0);
-            try (InputStream inBar = comPortBar.getInputStream()) {
-                BufferedReader readerBar = new BufferedReader(new InputStreamReader(inBar));
-                String lineBar;
-                String identificativo = "Stella";
-                if (readerBar.ready())
-                    readerBar.readLine();   //  utile per 'svuotare' eventuali codici a barre letti prima della stampa dell'etichetta
-                stampaSuEtichettatrice(nomeEtichettatrice, identificativo);
-                if ((lineBar = readerBar.readLine()) != null) {
-                    if (lineBar.equals(identificativo)) {
-                        System.out.println("TUTTO OK");
-                        esito = EsitoControlloCodiceABarre.ESITO_POSITIVO;
-                    }
-                    else {
-                        System.out.println("Nooooo "+ lineBar);
-                        esito = EsitoControlloCodiceABarre.ESITO_NEGATIVO;
-                    }
+    public EsitoControlloCodiceABarre stampaEtichettaEControllaCodiceABarre(String identificativo) {
+        if (identificativo != null && !identificativo.isBlank()) {
+            SerialPort comPortBar = null;
+            for (SerialPort commPortTemp : SerialPort.getCommPorts()) {
+                String portName = commPortTemp.getDescriptivePortName().toLowerCase();
+                if (portName.contains("barcode")) {
+                    comPortBar = commPortTemp;
                 }
-                else
-                    esito = EsitoControlloCodiceABarre.ERRORE_BARCODE_VUOTO;
-            } catch (IOException ex) {
-                Logger.getLogger(LabelLinkBuddy.class.getName()).log(Level.SEVERE, null, ex);
-                esito = EsitoControlloCodiceABarre.ERRORE_BARCODE;
-            } catch (JRException ex) {
-                Logger.getLogger(LabelLinkBuddy.class.getName()).log(Level.SEVERE, null, ex);
-                esito = EsitoControlloCodiceABarre.ERRORE_CREAZIONE_ETICHETTA;
-            } catch (EtichettatriceNonTrovataException ex) {
-                Logger.getLogger(LabelLinkBuddy.class.getName()).log(Level.SEVERE, null, ex);
-                esito = EsitoControlloCodiceABarre.ERRORE_STAMPANTE_NON_TROVATA;
             }
-            comPortBar.closePort();
-            return esito;
+
+            if (comPortBar != null) {
+                EsitoControlloCodiceABarre esito;
+                comPortBar.disableExclusiveLock();
+                comPortBar.openPort();
+                comPortBar.setComPortTimeouts(SerialPort.TIMEOUT_READ_SEMI_BLOCKING, 0, 0);
+                try (InputStream inBar = comPortBar.getInputStream()) {
+                    BufferedReader readerBar = new BufferedReader(new InputStreamReader(inBar));
+                    String lineBar;
+                    if (readerBar.ready())
+                        readerBar.readLine();   //  utile per 'svuotare' eventuali codici a barre letti prima della stampa dell'etichetta
+                    stampaSuEtichettatrice(nomeEtichettatrice, identificativo);
+                    if ((lineBar = readerBar.readLine()) != null) {
+                        if (lineBar.equals(identificativo)) {
+                            System.out.println("TUTTO OK");
+                            esito = EsitoControlloCodiceABarre.ESITO_POSITIVO;
+                        }
+                        else {
+                            System.out.println("Nooooo "+ lineBar);
+                            esito = EsitoControlloCodiceABarre.ESITO_NEGATIVO;
+                        }
+                    }
+                    else
+                        esito = EsitoControlloCodiceABarre.ERRORE_BARCODE_VUOTO;
+                } catch (IOException ex) {
+                    Logger.getLogger(LabelLinkBuddy.class.getName()).log(Level.SEVERE, null, ex);
+                    esito = EsitoControlloCodiceABarre.ERRORE_BARCODE;
+                } catch (JRException ex) {
+                    Logger.getLogger(LabelLinkBuddy.class.getName()).log(Level.SEVERE, null, ex);
+                    esito = EsitoControlloCodiceABarre.ERRORE_CREAZIONE_ETICHETTA;
+                } catch (EtichettatriceNonTrovataException ex) {
+                    Logger.getLogger(LabelLinkBuddy.class.getName()).log(Level.SEVERE, null, ex);
+                    esito = EsitoControlloCodiceABarre.ERRORE_STAMPANTE_NON_TROVATA;
+                }
+                comPortBar.closePort();
+                return esito;
+            }
+            return EsitoControlloCodiceABarre.ERRORE_BARCODE_NON_COLLEGATO;
         }
-        return EsitoControlloCodiceABarre.ERRORE_BARCODE_NON_COLLEGATO;
+        return EsitoControlloCodiceABarre.ERRORE_IDENTIFICATIVO_VUOTO;
     }
     
     private void stampaSuEtichettatrice(String nomeEtichettatrice, String identificativo) throws JRException, EtichettatriceNonTrovataException {
