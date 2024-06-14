@@ -16,6 +16,7 @@
  */
 package com.mainardisoluzioni.labellinkbuddy;
 
+import static com.mainardisoluzioni.labellinkbuddy.PyPanda.HEARTBEAT_NODE_IDENTIFIER;
 import static com.mainardisoluzioni.labellinkbuddy.PyPanda.IP_ADDRESS;
 import static com.mainardisoluzioni.labellinkbuddy.PyPanda.NAMESPACE_INDEX;
 import static com.mainardisoluzioni.labellinkbuddy.PyPanda.TCP_PORT;
@@ -42,8 +43,6 @@ import org.eclipse.milo.opcua.stack.core.util.EndpointUtil;
  */
 public class HeartbeatPlc {
     private OpcUaClient client;
-    
-    private static final int HEARTBEAT_NODE_IDENTIFIER = 9;
     
     public void sendHeartbeat() throws InterruptedException, ExecutionException, UaException {
         List<EndpointDescription> endpoints = DiscoveryClient.getEndpoints("opc.tcp://" + IP_ADDRESS +":" + String.valueOf(TCP_PORT)).get();

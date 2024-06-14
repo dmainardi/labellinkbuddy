@@ -57,15 +57,19 @@ public class PyPanda {
     private static final int PROCESS_ENDED_NODE_IDENTIFIER = 6;
     private static final int WRITE_NODE_IDENTIFIER = 7;
     private static final int IDENTIFICATIVO_NODE_IDENTIFIER = 8;
+    public static final int HEARTBEAT_NODE_IDENTIFIER = 9;
     
     private OpcUaClient client;
     
     private final LabelLinkBuddy instance;
     
+    private final BaseDiDati baseDiDati;
+    
     private HeartbeatPlcControl heartbeatPlcControl;
 
     public PyPanda(String nomeEtichettatrice) {
         instance = new LabelLinkBuddy(nomeEtichettatrice);
+        baseDiDati = new BaseDiDati();
     }
     
     public void createClientAndWaitForPrint() throws UaException, InterruptedException, ExecutionException {
@@ -107,7 +111,8 @@ public class PyPanda {
                         EsitoControlloCodiceABarre esito;
                         try {
                             String identificativo = String.valueOf(client.getAddressSpace().getVariableNode(new NodeId(NAMESPACE_INDEX, IDENTIFICATIVO_NODE_IDENTIFIER)).readValue().getValue().getValue());
-                            esito = instance.stampaEtichettaEControllaCodiceABarre(identificativo);
+                            //esito = instance.stampaEtichettaEControllaCodiceABarre(identificativo);
+                            esito = baseDiDati.creaEvento(identificativo);
                         } catch (UaException ex) {
                             esito = EsitoControlloCodiceABarre.ERRORE_IDENTIFICATIVO_VUOTO;
                         }
@@ -134,7 +139,7 @@ public class PyPanda {
         
         heartbeatPlcControl = new HeartbeatPlcControl();
         heartbeatPlcControl.doHeartbeat();
-        Thread.sleep(240000);
+        Thread.sleep(60000);
         //Thread.currentThread().join();
         heartbeatPlcControl.cancelHeartbeat();
         
